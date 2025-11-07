@@ -13,4 +13,4 @@ pip install -r requirements.txt
 pnpm dev
 - Chạy service 
 cd model_service
-python main.y
+python main.py
