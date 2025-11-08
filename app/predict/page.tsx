@@ -4,7 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { ChevronLeft, Zap, TrendingUp, AlertCircle } from "lucide-react"
 import { predictPriceRange } from "@/lib/predict"
-import { seedProducts } from "@/lib/seed-data"
 
 type PredictInput = {
   ram_gb: number
@@ -47,27 +46,6 @@ export default function PredictPage() {
     }
   }
 
-  const handleLoadExample = (exampleIndex: number) => {
-    const example = seedProducts[exampleIndex]
-    setSpecs({
-      ram_gb: Math.max(4, Math.min(16, Math.round((example.specs.ram || 8192) / 1024))),
-      rom_option: ((): string => {
-        const gb = example.specs.int_memory || 128
-        if (gb >= 2048) return "2TB"
-        if (gb >= 1024) return "1TB"
-        const opts = [32, 64, 128, 256, 512]
-        const closest = opts.reduce((p, c) => (Math.abs(c - gb) < Math.abs(p - gb) ? c : p))
-        return String(closest)
-      })(),
-      chip: "",
-      brand: example.brand || "Other",
-      front_camera_mp: example.specs.fc || 12,
-      back_camera_mp: example.specs.pc || 48,
-      battery_mah: example.specs.battery_power || 4000,
-      screen_size_in: example.specs.sc_w || 6.0,
-    })
-    setPrediction(null)
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,22 +68,6 @@ export default function PredictPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Input Form */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Quick Load Examples */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h3 className="font-semibold text-foreground mb-4">Tải Ví Dụ</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {seedProducts.slice(0, 4).map((product, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleLoadExample(idx)}
-                    className="px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                  >
-                    {product.name.split(" ")[0]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Specs Input Grid */}
             <div className="bg-card border border-border rounded-xl p-6">
               <h3 className="font-semibold text-foreground mb-4">Thông Số Kỹ Thuật</h3>
