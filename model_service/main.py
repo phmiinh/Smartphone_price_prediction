@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import pandas as pd
+import warnings
 
 # Import model từ parent directory
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,13 +32,24 @@ app.add_middleware(
 # MODEL SETUP
 # ============================================
 MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
-MODEL_PATH = os.path.join(MODEL_DIR, "price_predictor.pkl")
+# Try multiple possible model file names (from notebook: random_forest_model.pkl is the best model)
+MODEL_PATH = None
+for model_name in ["price_predictor.pkl", "random_forest_model.pkl", "decision_tree_model.pkl", "knn_model.pkl"]:
+    potential_path = os.path.join(MODEL_DIR, model_name)
+    if os.path.exists(potential_path):
+        MODEL_PATH = potential_path
+        break
+if MODEL_PATH is None:
+    MODEL_PATH = os.path.join(MODEL_DIR, "price_predictor.pkl")  # Default fallback
 SCALER_PATH = os.path.join(MODEL_DIR, "scaler.pkl")
 VECTORIZER_PATH = os.path.join(MODEL_DIR, "processor_vectorizer.pkl")
 PCA_PATH = os.path.join(MODEL_DIR, "processor_pca.pkl")
+TARGET_ENCODER_PATH = os.path.join(MODEL_DIR, "target_encoder_fitted.pkl")
 
 # Load model và scaler khi start service
 try:
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(f"Model file not found. Tried: {MODEL_PATH}\nPlease ensure one of these files exists in {MODEL_DIR}:\n  - price_predictor.pkl\n  - random_forest_model.pkl\n  - decision_tree_model.pkl\n  - knn_model.pkl")
     print(f"📥 Loading model from: {MODEL_PATH}")
     with open(MODEL_PATH, 'rb') as f:
         model = pickle.load(f)
@@ -52,23 +64,35 @@ try:
         print("✅ Scaler loaded successfully")
     else:
         print("⚠️ No scaler found, using raw features")
-    # Optional: load text vectorizer and PCA for processor field
+    # Load Target Encoder (K-Fold Target Encoding for Company and Processor)
+    target_encoder = None
+    if os.path.exists(TARGET_ENCODER_PATH):
+        try:
+            with open(TARGET_ENCODER_PATH, 'rb') as f:
+                target_encoder = pickle.load(f)
+            print("✅ Target encoder loaded successfully")
+        except Exception as e:
+            print(f"⚠️ Failed to load target encoder: {e}, will use fallback encoding")
+    else:
+        print("⚠️ No target encoder found, will use fallback encoding")
+    
+    # Optional: load text vectorizer and PCA for processor field (old method, deprecated)
     vectorizer = None
     pca = None
     if os.path.exists(VECTORIZER_PATH):
         try:
             with open(VECTORIZER_PATH, 'rb') as f:
                 vectorizer = pickle.load(f)
-            print("✅ Processor vectorizer loaded")
+            print("✅ Processor vectorizer loaded (deprecated)")
         except Exception as _:
-            print("⚠️ Failed to load processor vectorizer, will fallback to zeros")
+            pass
     if os.path.exists(PCA_PATH):
         try:
             with open(PCA_PATH, 'rb') as f:
                 pca = pickle.load(f)
-            print("✅ Processor PCA loaded")
+            print("✅ Processor PCA loaded (deprecated)")
         except Exception as _:
-            print("⚠️ Failed to load processor PCA, will fallback to zeros")
+            pass
         
 except FileNotFoundError:
     print(f"❌ Error: Model file not found at {MODEL_PATH}")
@@ -128,25 +152,25 @@ DEFAULT_VND_BANDS = [
 def rom_option_to_reg_feature(rom_option: str) -> float:
     """
     Convert ROM option to numeric value matching notebook processing.
-    Notebook uses: clean_numeric(..., remove_str="GB", round_to_int=True)
-    So ROM is just the GB number, not divided by 64.
+    From Preprocessor.ipynb extract_rom():
+    - For TB: returns TB value directly (e.g., "1TB" -> 1.0)
+    - For GB: returns GB/1024 to convert to TB (e.g., "256GB" -> 256/1024 = 0.25)
     """
     opt = rom_option.strip().upper()
     if opt.endswith("TB"):
         try:
+            # Extract TB value and keep as TB (e.g., "1TB" -> 1.0)
             tb_val = float(opt.replace('TB', '').strip())
+            return tb_val
         except Exception:
-            tb_val = 1.0
-        # Convert TB to GB
-        gb = tb_val * 1024.0
+            return 1.0  # Default 1TB
     else:
-        # assume GB number as string
+        # Extract GB value and convert to TB (e.g., "256GB" -> 256/1024 = 0.25)
         try:
             gb = float(opt.replace('GB', '').strip())
+            return gb / 1024.0  # Convert GB to TB (matching notebook)
         except Exception:
-            gb = 128.0  # Default to 128GB
-    # Notebook test case: ROM = clean_numeric("256GB", remove_str="GB") = 256 (not divided)
-    return float(gb)
+            return 0.125  # Default 128GB = 0.125 TB
 
 def load_pricing_bands_vnd() -> List[List[float]]:
     raw = os.environ.get('PRICING_BANDS_VND')
@@ -254,17 +278,100 @@ async def predict(request: PredictRequest):
         # Process exactly as notebook: Battery Capacity / 1000
         battery_capacity_feature = float(battery_mah) / 1000.0
         
-        # Process exactly as notebook: RAM (already in GB, no division)
-        ram_feature = float(request.ram_gb)
+        # Process exactly as notebook: RAM (divided by 4 as per notebook)
+        # Notebook: data["RAM"] = clean_numeric(data["RAM"], remove_str="GB", round_to_int=True) / 4
+        ram_feature = float(request.ram_gb) / 4.0
         
-        # Process exactly as notebook: ROM (already in GB, no division by 64)
+        # Process exactly as notebook: ROM (extracted from model name, divided by 1024 if TB, else divided by 1024 if GB)
+        # Notebook: extract_rom returns GB/1024 for GB values, or TB*1024 for TB values
+        # Then ROM is used directly (not divided by 64)
         rom_feature = rom_option_to_reg_feature(request.rom_option)
         
         # Process exactly as notebook: Screen Size (already in inches)
         screen_size_feature = float(screen_in)
 
-        # Build brand one-hot from brand string (matching notebook logic)
+        # Encode Company and Processor using Target Encoder (K-Fold Target Encoding)
+        # This is the correct method used in training
         brand_upper = request.brand.strip().title()  # Normalize: "apple" -> "Apple"
+        
+        # Simplify Company Name (matching notebook logic)
+        # Top 5 companies: Apple, Samsung, Oppo, Honor, Vivo -> others become "Other"
+        top_companies = ['Apple', 'Samsung', 'Oppo', 'Honor', 'Vivo']
+        company_name = brand_upper if brand_upper in top_companies else 'Other'
+        
+        # Use Target Encoder if available
+        if target_encoder is not None:
+            try:
+                # Create DataFrame with Company and Processor (matching notebook format)
+                # Note: pd is already imported at the top of the file
+                X_encode = pd.DataFrame({
+                    'Company': [company_name],
+                    'Processor': [request.chip.strip()]
+                })
+                
+                # Transform using fitted encoder
+                # Note: encoder.transform() returns encoded values
+                X_encoded = target_encoder.transform(X_encode)
+                
+                company_encoded = float(X_encoded['Company_encoded'].iloc[0])
+                processor_encoded = float(X_encoded['Processor_encoded'].iloc[0])
+                
+                print(f"✅ Using Target Encoder: Company={company_encoded:.2f}, Processor={processor_encoded:.2f}")
+            except Exception as e:
+                print(f"⚠️ Target encoder failed: {e}, using fallback")
+                # Fallback to simple mapping
+                brand_mapping = {
+                    'Apple': 9.854878,
+                    'Samsung': 7.143009,
+                    'Honor': 6.036950,
+                    'Oppo': 5.098215,
+                    'Vivo': 4.797728,
+                    'Other': 4.652936,
+                }
+                company_encoded = float(brand_mapping.get(company_name, 4.652936))
+                processor_encoded = 5.0  # Default processor encoding
+        else:
+            # Fallback: use approximate values from notebook statistics
+            brand_mapping = {
+                'Apple': 9.854878,
+                'Samsung': 7.143009,
+                'Honor': 6.036950,
+                'Oppo': 5.098215,
+                'Vivo': 4.797728,
+                'Other': 4.652936,
+            }
+            company_encoded = float(brand_mapping.get(company_name, 4.652936))
+            
+            # For processor, use mapping from notebook statistics (top processors)
+            # These are the actual encoded values from the notebook
+            processor_mapping = {
+                'a16 bionic': 9.362926,
+                'snapdragon 8 gen 2': 9.301048,
+                'snapdragon 8 gen 3': 9.298640,
+                'a12z bionic': 9.034853,
+                'qualcomm snapdragon 8 gen 3': 8.486773,
+                'snapdragon 8 gen 1': 8.391612,
+                'a15 bionic': 8.327211,
+                'qualcomm snapdragon 8 gen 2': 8.287884,
+                'a14 bionic': 7.966746,
+                'kirin 9010': 7.810113,
+                'a17 pro': 7.767620,
+                'a12 bionic': 7.701520,
+                'qualcomm snapdragon 8 gen 1': 7.700137,
+                'google tensor g4': 7.628708,
+                'a13 bionic': 7.539615,
+            }
+            chip_lower = request.chip.strip().lower()
+            # Try to find exact match or partial match
+            processor_encoded = 5.858251  # Default: mean from notebook
+            for key, value in processor_mapping.items():
+                if key in chip_lower or chip_lower in key:
+                    processor_encoded = value
+                    break
+            
+            print(f"⚠️ Using fallback encoding: Company={company_encoded:.2f}, Processor={processor_encoded:.2f} (chip: {request.chip})")
+        
+        # Also keep old one-hot for backward compatibility (if model needs it)
         company = {
             'Company_Apple': 1 if brand_upper == 'Apple' else 0,
             'Company_Honor': 1 if brand_upper == 'Honor' else 0,
@@ -273,8 +380,8 @@ async def predict(request: PredictRequest):
             'Company_Samsung': 1 if brand_upper == 'Samsung' else 0,
             'Company_Vivo': 1 if brand_upper == 'Vivo' else 0,
         }
-
-        # Processor vectors (exactly as notebook)
+        
+        # Also keep old processor vectors for backward compatibility (if model needs it)
         proc_vec1 = 0.0
         proc_vec2 = 0.0
         proc_vec3 = 0.0
@@ -287,64 +394,157 @@ async def predict(request: PredictRequest):
             except Exception:
                 pass
 
-        # Get required feature names from model's preprocessor (matching notebook logic)
+        # Get required feature names from model
         required_cols = None
-        if hasattr(model, 'named_steps') and 'preprocessor' in model.named_steps:
-            pre = model.named_steps['preprocessor']
-            if hasattr(pre, 'named_steps') and 'imputer' in pre.named_steps:
-                imputer = pre.named_steps['imputer']
-                if hasattr(imputer, 'feature_names_in_'):
-                    required_cols = list(imputer.feature_names_in_)
         
+        # Check if model is a Pipeline
+        from sklearn.pipeline import Pipeline
+        is_pipeline = isinstance(model, Pipeline)
+        
+        print(f"🔍 Model type: {type(model).__name__}, Is Pipeline: {is_pipeline}")
+        
+        # Try to get feature names from model
+        required_cols = None
+        if is_pipeline:
+            # For Pipeline, try to get from final estimator
+            final_estimator = model.steps[-1][1] if hasattr(model, 'steps') else None
+            print(f"🔍 Pipeline steps: {[s[0] for s in model.steps] if hasattr(model, 'steps') else 'N/A'}")
+            print(f"🔍 Final estimator type: {type(final_estimator).__name__ if final_estimator else 'N/A'}")
+            
+            if final_estimator and hasattr(final_estimator, 'feature_names_in_'):
+                required_cols = list(final_estimator.feature_names_in_)
+                print(f"✅ Got feature names from final estimator: {required_cols}")
+            # Or try from preprocessor
+            elif 'preprocessor' in model.named_steps:
+                pre = model.named_steps['preprocessor']
+                print(f"🔍 Preprocessor type: {type(pre).__name__}")
+                if hasattr(pre, 'named_steps') and 'imputer' in pre.named_steps:
+                    imputer = pre.named_steps['imputer']
+                    if hasattr(imputer, 'feature_names_in_'):
+                        required_cols = list(imputer.feature_names_in_)
+                        print(f"✅ Got feature names from imputer: {required_cols}")
+        else:
+            # Direct model (RandomForestRegressor, etc.)
+            if hasattr(model, 'feature_names_in_'):
+                required_cols = list(model.feature_names_in_)
+                print(f"✅ Got feature names from direct model: {required_cols}")
+        
+        # Fallback to hardcoded feature order if model doesn't have feature names
         if required_cols is None:
-            raise HTTPException(status_code=500, detail="Cannot determine required feature names from model")
+            print("⚠️ Cannot determine feature names from model, using default order")
+            required_cols = REG_FEATURE_ORDER.copy()
+            # Add Launched Year if model expects it
+            if 'Launched Year' not in required_cols:
+                required_cols.append('Launched Year')
+        else:
+            print(f"✅ Using model feature names: {len(required_cols)} features")
         
-        # Build DataFrame with required columns in exact order (matching notebook)
-        X_in = pd.DataFrame(index=[0])
+        # Build feature dictionary first
+        feature_dict = {}
         
-        # Map our inputs to model's expected features (exactly as notebook)
+        # Map our inputs to model's expected features
         for col in required_cols:
             if col == 'RAM':
-                X_in[col] = ram_feature
+                feature_dict[col] = ram_feature
             elif col == 'Screen Size':
-                X_in[col] = screen_size_feature
+                feature_dict[col] = screen_size_feature
             elif col == 'ROM':
-                X_in[col] = rom_feature
+                feature_dict[col] = rom_feature
             elif col == 'Front Camera':
-                X_in[col] = front_cam_feature
+                feature_dict[col] = front_cam_feature
             elif col == 'Back Camera':
-                X_in[col] = back_cam_feature
+                feature_dict[col] = back_cam_feature
             elif col == 'Battery Capacity':
-                X_in[col] = battery_capacity_feature
-            elif col.startswith('Company_'):
-                comp_name = col.split('Company_')[-1]
-                X_in[col] = company.get(col, 0)
+                feature_dict[col] = battery_capacity_feature
+            elif col == 'Company_encoded':
+                # New model uses numeric encoding (0-5)
+                feature_dict[col] = company_encoded
+            elif col == 'Processor_encoded':
+                # New model uses numeric encoding (hash-based)
+                feature_dict[col] = processor_encoded
+            elif col.startswith('Company_') and col != 'Company_encoded':
+                # Old model uses one-hot encoding
+                feature_dict[col] = company.get(col, 0)
             elif col.startswith('Processor_vec'):
                 vec_num = int(col.replace('Processor_vec', ''))
                 if vec_num == 1:
-                    X_in[col] = proc_vec1
+                    feature_dict[col] = proc_vec1
                 elif vec_num == 2:
-                    X_in[col] = proc_vec2
+                    feature_dict[col] = proc_vec2
                 elif vec_num == 3:
-                    X_in[col] = proc_vec3
+                    feature_dict[col] = proc_vec3
                 else:
-                    X_in[col] = 0.0
+                    feature_dict[col] = 0.0
             elif col == 'Launched Year':
-                # Model expects this but we don't have it - use current year or median
-                X_in[col] = 2024  # Default to current year
+                feature_dict[col] = 2024  # Default to current year
             else:
                 # Unknown column - set to 0
+                feature_dict[col] = 0.0
+        
+        # Build DataFrame with feature names in exact order
+        # This ensures feature names match what model expects
+        # Create DataFrame with proper column names to avoid sklearn warning
+        # Important: Create DataFrame with columns in the exact order model expects
+        X_in = pd.DataFrame([feature_dict], columns=required_cols)
+        
+        # Verify all required columns are present
+        missing_cols = set(required_cols) - set(X_in.columns)
+        if missing_cols:
+            print(f"⚠️ Missing columns: {missing_cols}, filling with 0")
+            for col in missing_cols:
                 X_in[col] = 0.0
         
-        # Ensure column order matches required_cols exactly
-        X_in = X_in.reindex(columns=required_cols, fill_value=0.0)
+        # Ensure column order matches exactly
+        X_in = X_in[required_cols]
         
-        # Predict USD (regression) - model output is already in USD
-        # Notebook shows pred[0] * 100, but that's because target was divided by 100 during training
-        # Actually, model output is already in USD, no need to multiply
+        # Debug: Print feature names to verify
+        print(f"🔍 Predicting with {len(required_cols)} features")
+        print(f"   All columns: {list(X_in.columns)}")
+        print(f"   DataFrame shape: {X_in.shape}")
+        print(f"   Column names match: {X_in.columns.tolist() == required_cols}")
+        
+        # Predict USD (regression)
+        # IMPORTANT: Model was trained with price divided by 100 (normalized)
+        # From Preprocessor.ipynb: y = data['Launched Price (USA)'] / 100
+        # So model output is in normalized units (0.79 - 18.99 range)
+        # We need to multiply by 100 to get actual USD price
         try:
-            price_usd = float(model.predict(X_in)[0])
+            # Suppress sklearn warnings about feature names if they don't match exactly
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="X does not have valid feature names")
+                warnings.filterwarnings("ignore", category=UserWarning)
+                
+                # Check if model is a Pipeline (from notebook, model is saved as Pipeline)
+                # Pipeline contains: preprocessor (SimpleImputer + StandardScaler) + model
+                # If it's a Pipeline, it will automatically apply preprocessing
+                print(f"🔍 About to predict with DataFrame shape: {X_in.shape}")
+                print(f"🔍 DataFrame columns: {list(X_in.columns)}")
+                print(f"🔍 DataFrame dtypes:\n{X_in.dtypes}")
+                
+                if is_pipeline:
+                    # Pipeline expects raw features (not pre-scaled)
+                    # It will apply imputer and scaler internally
+                    # Note: Pipeline may not preserve feature names, so we pass DataFrame directly
+                    print("🔍 Using Pipeline.predict()")
+                    prediction_result = model.predict(X_in)
+                    print(f"🔍 Prediction result type: {type(prediction_result)}, shape: {prediction_result.shape if hasattr(prediction_result, 'shape') else 'N/A'}")
+                    price_normalized = float(prediction_result[0])
+                else:
+                    # Direct model - use as is
+                    print("🔍 Using direct model.predict()")
+                    prediction_result = model.predict(X_in)
+                    print(f"🔍 Prediction result type: {type(prediction_result)}, shape: {prediction_result.shape if hasattr(prediction_result, 'shape') else 'N/A'}")
+                    price_normalized = float(prediction_result[0])
+                
+                # Convert back to USD by multiplying by 100
+                price_usd = price_normalized * 100.0
+                print(f"💰 Model output (normalized): {price_normalized:.2f}")
+                print(f"💰 Converted to USD: ${price_usd:.2f}")
         except Exception as e:
+            import traceback
+            error_detail = f"Model predict failed: {str(e)}\n{traceback.format_exc()}"
+            print(f"❌ Prediction error details:\n{error_detail}")
             raise HTTPException(status_code=500, detail=f"Model predict failed: {str(e)}")
 
         # Convert to VND
@@ -364,6 +564,9 @@ async def predict(request: PredictRequest):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        error_detail = f"Prediction error: {str(e)}\n{traceback.format_exc()}"
+        print(f"❌ Full error traceback:\n{error_detail}")
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 @app.get("/health")

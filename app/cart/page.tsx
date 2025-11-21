@@ -7,6 +7,7 @@ import { ChevronLeft, Trash2, Plus, Minus } from "lucide-react"
 import { useCart } from "@/lib/store"
 import { getProductById } from "@/lib/products-db"
 import type { Product } from "@/lib/types"
+import { formatCurrency, stringToColor } from "@/lib/utils"
 
 export default function CartPage() {
   const cartItems = useCart((state) => state.items)
@@ -16,6 +17,29 @@ export default function CartPage() {
 
   const [products, setProducts] = useState<Record<string, Product | undefined>>({})
   const [mounted, setMounted] = useState(false)
+  const shippingOptions = [
+    {
+      id: "express",
+      label: "Siêu tốc 2h",
+      fee: 50000,
+      description: "Áp dụng nội thành Hà Nội/HCM",
+    },
+    {
+      id: "standard",
+      label: "Tiêu chuẩn",
+      fee: 0,
+      description: "3-5 ngày toàn quốc",
+    },
+    {
+      id: "store",
+      label: "Nhận tại store",
+      fee: 0,
+      description: "Giữ hàng 48h tại chi nhánh",
+    },
+  ] as const
+  const [selectedShipping, setSelectedShipping] = useState<(typeof shippingOptions)[number]>(shippingOptions[1])
+  const [note, setNote] = useState("")
+  const [voucher, setVoucher] = useState("")
 
   useEffect(() => {
     setMounted(true)
@@ -39,14 +63,13 @@ export default function CartPage() {
 
   const totalPrice = cartItems.reduce((sum, item) => {
     const product = products[item.productId]
-    return sum + (product ? product.price * item.quantity : 0)
+    const unitPrice = item.unitPrice ?? product?.price ?? 0
+    return sum + unitPrice * item.quantity
   }, 0)
 
-  const formattedTotal = new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(totalPrice)
+  const grandTotal = totalPrice + selectedShipping.fee
+  const formattedTotal = formatCurrency(totalPrice)
+  const formattedGrandTotal = formatCurrency(grandTotal)
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,14 +104,11 @@ export default function CartPage() {
                 const product = products[item.productId]
                 if (!product) return null
 
-                const formattedPrice = new Intl.NumberFormat("vi-VN", {
-                  style: "currency",
-                  currency: "VND",
-                  maximumFractionDigits: 0,
-                }).format(product.price)
+                const unitPrice = item.unitPrice ?? product.price
+                const selectionKey = `${item.productId}-${item.variantLabel ?? "base"}-${item.color ?? "default"}`
 
                 return (
-                  <div key={item.productId} className="bg-card border border-border rounded-xl p-4 flex gap-4">
+                  <div key={selectionKey} className="bg-card border border-border rounded-xl p-4 flex gap-4">
                     {/* Product Image */}
                     <div className="relative w-24 h-24 bg-muted rounded-lg flex-shrink-0 overflow-hidden">
                       <Image
@@ -106,39 +126,57 @@ export default function CartPage() {
                           {product.name}
                         </h3>
                       </Link>
-                      <p className="text-sm text-muted-foreground mb-3">{product.brand}</p>
-                      <p className="font-bold text-primary">{formattedPrice}</p>
+                      <p className="text-sm text-muted-foreground mb-1">{product.brand}</p>
+                      {item.variantLabel && (
+                        <p className="text-xs text-muted-foreground">Phiên bản: {item.variantLabel}</p>
+                      )}
+                      {item.color && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          Màu: {item.color}
+                          <span
+                            className="inline-block w-3 h-3 rounded-full border"
+                            style={{ backgroundColor: stringToColor(item.color) }}
+                          />
+                        </p>
+                      )}
+                      <p className="font-bold text-primary mt-2">{formatCurrency(unitPrice)}</p>
                     </div>
 
                     {/* Quantity & Actions */}
                     <div className="flex flex-col items-end gap-3">
                       <button
-                        onClick={() => removeItem(item.productId)}
+                        onClick={() => removeItem(item.productId, { variantLabel: item.variantLabel, color: item.color })}
                         className="text-destructive hover:text-destructive/80 transition-colors p-1"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
                       <div className="flex items-center border border-border rounded-lg">
                         <button
-                          onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))}
+                          onClick={() =>
+                            updateQuantity(item.productId, Math.max(1, item.quantity - 1), {
+                              variantLabel: item.variantLabel,
+                              color: item.color,
+                            })
+                          }
                           className="px-2 py-1 text-foreground hover:bg-muted transition-colors"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="px-3 py-1 text-foreground font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          onClick={() =>
+                            updateQuantity(item.productId, item.quantity + 1, {
+                              variantLabel: item.variantLabel,
+                              color: item.color,
+                            })
+                          }
                           className="px-2 py-1 text-foreground hover:bg-muted transition-colors"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
                       <p className="text-sm font-semibold text-foreground">
-                        {new Intl.NumberFormat("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                          maximumFractionDigits: 0,
-                        }).format(product.price * item.quantity)}
+                        {formatCurrency(unitPrice * item.quantity)}
                       </p>
                     </div>
                   </div>
@@ -149,47 +187,102 @@ export default function CartPage() {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <div className="bg-card border border-border rounded-xl p-6 sticky top-24">
-                <h2 className="text-lg font-bold text-foreground mb-4">Tóm Tắt Đơn Hàng</h2>
+                <h2 className="text-lg font-bold text-foreground mb-4">Tóm tắt đơn hàng</h2>
 
-                <div className="space-y-3 mb-6 pb-6 border-b border-border">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Số lượng sản phẩm:</span>
-                    <span className="font-medium text-foreground">
-                      {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
-                    </span>
+                <div className="space-y-3 mb-6">
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wide">Chọn vận chuyển</label>
+                    <div className="space-y-2 mt-3">
+                      {shippingOptions.map((option) => (
+                        <label
+                          key={option.id}
+                          className={`flex justify-between items-center border rounded-xl px-3 py-2 cursor-pointer ${
+                            selectedShipping.id === option.id ? "border-primary bg-primary/5" : "border-border bg-muted/40"
+                          }`}
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{option.label}</p>
+                            <p className="text-xs text-muted-foreground">{option.description}</p>
+                          </div>
+                          <input
+                            type="radio"
+                            checked={selectedShipping.id === option.id}
+                            onChange={() => setSelectedShipping(option)}
+                          />
+                        </label>
+                      ))}
+                    </div>
                   </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wide">Ghi chú cho shop</label>
+                    <textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="Ví dụ: Giao giờ hành chính, xuất hóa đơn..."
+                      className="mt-2 w-full rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase tracking-wide">Mã giảm giá</label>
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        value={voucher}
+                        onChange={(e) => setVoucher(e.target.value)}
+                        placeholder="Nhập mã"
+                        className="flex-grow rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <button className="px-4 py-2 rounded-xl border border-border text-sm font-semibold hover:bg-muted transition-colors">
+                        Áp dụng
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 border-t border-border pt-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tạm tính:</span>
+                    <span className="text-muted-foreground">Tạm tính</span>
                     <span className="font-medium text-foreground">{formattedTotal}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Vận chuyển:</span>
-                    <span className="font-medium text-green-600">Miễn phí</span>
+                    <span className="text-muted-foreground">Vận chuyển</span>
+                    <span className="font-medium text-foreground">
+                      {selectedShipping.fee === 0 ? "Miễn phí" : formatCurrency(selectedShipping.fee)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold text-foreground pt-2">
+                    <span>Tổng cộng</span>
+                    <span className="text-primary">{formattedGrandTotal}</span>
                   </div>
                 </div>
 
-                <div className="flex justify-between mb-6">
-                  <span className="font-bold text-foreground">Tổng cộng:</span>
-                  <span className="text-2xl font-bold text-primary">{formattedTotal}</span>
-                </div>
-
-                <button className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors mb-3">
-                  Thanh Toán
-                </button>
+                <Link
+                  href={cartItems.length ? "/checkout" : "/"}
+                  className={`block text-center w-full px-6 py-3 rounded-lg font-semibold transition-colors mb-3 ${
+                    cartItems.length
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-muted text-muted-foreground cursor-not-allowed"
+                  }`}
+                >
+                  {cartItems.length ? "Thanh toán" : "Giỏ hàng trống"}
+                </Link>
 
                 <button
                   onClick={clearCart}
                   className="w-full px-6 py-2 border border-border text-foreground rounded-lg font-medium hover:bg-muted transition-colors"
                 >
-                  Xóa Giỏ Hàng
+                  Xóa giỏ hàng
                 </button>
 
                 <div className="mt-6 p-4 bg-primary/10 rounded-lg text-sm text-foreground">
                   <p className="font-semibold mb-2">Lợi ích của bạn:</p>
                   <ul className="space-y-1 text-muted-foreground text-xs">
                     <li>✓ Chính hãng 100%</li>
-                    <li>✓ Giao hàng nhanh</li>
-                    <li>✓ Bảo hành từ 12 tháng</li>
+                    <li>✓ Giao hàng nhanh 2h tại HN/HCM</li>
+                    <li>✓ Bảo hành tối thiểu 12 tháng</li>
+                    <li>✓ Tư vấn AI dự đoán giá ngay tại trang thanh toán</li>
                   </ul>
                 </div>
               </div>

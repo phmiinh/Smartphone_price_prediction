@@ -141,7 +141,7 @@ export default function ComparisonPage() {
                       }).format(product.price)}
                     </p>
                     <button
-                      onClick={() => addItem(product.id, 1)}
+                      onClick={() => addItem(product.id, 1, { unitPrice: product.price })}
                       className="w-full px-2 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
                     >
                       <ShoppingCart className="w-3.5 h-3.5" />

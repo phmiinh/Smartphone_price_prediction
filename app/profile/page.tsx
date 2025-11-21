@@ -2,9 +2,14 @@
 
 import Link from "next/link"
 import { ChevronLeft, User, Mail, MapPin, Phone, LogOut, Settings } from "lucide-react"
+import { useOrders } from "@/lib/orders-store"
+import { formatCurrency } from "@/lib/utils"
 
 export default function ProfilePage() {
-  // Mock user data
+  const orders = useOrders((state) => state.orders)
+  const latestOrders = orders.slice(0, 3)
+  const totalSpend = orders.reduce((sum, order) => sum + order.total, 0)
+
   const user = {
     name: "Nguyễn Văn A",
     email: "nguyen.vana@email.com",
@@ -12,23 +17,6 @@ export default function ProfilePage() {
     address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
     joinDate: "Tháng 1, 2024",
   }
-
-  const orders = [
-    {
-      id: "ORD-001",
-      date: "2024-01-15",
-      total: 26990000,
-      status: "Đã Giao",
-      items: 1,
-    },
-    {
-      id: "ORD-002",
-      date: "2024-01-20",
-      total: 38980000,
-      status: "Đang Giao",
-      items: 2,
-    },
-  ]
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,35 +83,35 @@ export default function ProfilePage() {
             <div className="bg-card border border-border rounded-xl p-6">
               <h2 className="text-lg font-bold text-foreground mb-4">Lịch Sử Đơn Hàng</h2>
               <div className="space-y-3">
-                {orders.map((order) => (
-                  <div
+                {(latestOrders.length ? latestOrders : orders.slice(0, 2)).map((order) => (
+                  <Link
+                    href={`/orders/${order.id}`}
                     key={order.id}
                     className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex-grow">
                       <p className="font-medium text-foreground">{order.id}</p>
                       <p className="text-xs text-muted-foreground">
-                        {order.date} • {order.items} sản phẩm
+                        {new Date(order.createdAt).toLocaleString("vi-VN")} • {order.items.length} sản phẩm
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-primary">
-                        {new Intl.NumberFormat("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                          maximumFractionDigits: 0,
-                        }).format(order.total)}
-                      </p>
+                      <p className="font-bold text-primary">{formatCurrency(order.total)}</p>
                       <p
                         className={`text-xs font-medium ${
-                          order.status === "Đã Giao" ? "text-green-600" : "text-blue-600"
+                          order.status === "delivered" ? "text-green-600" : "text-blue-600"
                         }`}
                       >
-                        {order.status}
+                        {order.status.toUpperCase()}
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
+                {orders.length === 0 && (
+                  <div className="text-center text-sm text-muted-foreground py-6 border border-dashed border-border rounded-xl">
+                    Bạn chưa có đơn hàng nào. <Link href="/" className="text-primary font-semibold">Mua sắm ngay</Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -135,12 +123,12 @@ export default function ProfilePage() {
               <h3 className="font-bold text-foreground mb-4">Thống Kê</h3>
               <div className="space-y-4">
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-primary">42</p>
-                  <p className="text-xs text-muted-foreground">Tổng Đơn Hàng</p>
+                  <p className="text-3xl font-bold text-primary">{orders.length.toString().padStart(2, "0")}</p>
+                  <p className="text-xs text-muted-foreground">Tổng đơn hàng</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-primary">2.5M</p>
-                  <p className="text-xs text-muted-foreground">Tổng Tiêu Dùng</p>
+                  <p className="text-3xl font-bold text-primary">{formatCurrency(totalSpend)}</p>
+                  <p className="text-xs text-muted-foreground">Tổng chi tiêu</p>
                 </div>
               </div>
             </div>

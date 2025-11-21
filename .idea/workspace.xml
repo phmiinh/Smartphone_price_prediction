@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f1c757a2-db8f-48b8-a40d-a1329a5afc37" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/admin/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/admin/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/cart/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/cart/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/product/[slug]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/product/[slug]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/profile/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/profile/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/autoprefixer" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/autoprefixer" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/autoprefixer.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/autoprefixer.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/autoprefixer.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/autoprefixer.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/baseline-browser-mapping" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/baseline-browser-mapping" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/baseline-browser-mapping.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/baseline-browser-mapping.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/baseline-browser-mapping.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/baseline-browser-mapping.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/browserslist" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/browserslist" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/browserslist.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/browserslist.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/browserslist.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/browserslist.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/jiti" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/jiti" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/jiti.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/jiti.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/jiti.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/jiti.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/loose-envify" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/loose-envify" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/loose-envify.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/loose-envify.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/loose-envify.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/loose-envify.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/nanoid" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/nanoid" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/nanoid.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/nanoid.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/nanoid.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/nanoid.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/next" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/next" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/next.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/next.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/next.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/next.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/semver" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/semver" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/semver.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/semver.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/semver.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/semver.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsc" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsc.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsc.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsc.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsc.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsserver" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsserver" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsserver.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsserver.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/tsserver.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/tsserver.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db.CMD" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db.CMD" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.bin/update-browserslist-db.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="GOROOT" url="file://$USER_HOME$/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.0.windows-amd64" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="PackageJsonUpdateNotifier">
+    <dismissed value="$PROJECT_DIR$/package.json" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 1
+}]]></component>
+  <component name="ProjectId" id="35n29cBTsZR4aBcP7UUf7ArOgQ1" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
+    "git-widget-placeholder": "main",
+    "go.import.settings.migrated": "true",
+    "go.sdk.automatically.set": "true",
+    "last_opened_file_path": "D:/code/Smartphone_price_prediction/backend",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "go.sdk"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-gosdk-d297c17c1fbd-57c114c3cede-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.26574.98" />
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-GO-243.26574.98" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VgoProject">
+    <settings-migrated>true</settings-migrated>
+  </component>
+</project>

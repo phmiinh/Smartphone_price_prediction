@@ -1,9 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ChevronLeft, Zap, TrendingUp, AlertCircle } from "lucide-react"
+import Image from "next/image"
+import { ChevronLeft, Zap, TrendingUp, AlertCircle, Sparkles } from "lucide-react"
 import { predictPriceRange } from "@/lib/predict"
+import { getSimilarPriceProducts } from "@/lib/products-db"
+import type { Product } from "@/lib/types"
+import { formatCurrency } from "@/lib/utils"
+import ProductCard from "@/components/product-card"
 
 type PredictInput = {
   ram_gb: number
@@ -31,15 +36,20 @@ export default function PredictPage() {
   const [prediction, setPrediction] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([])
 
   const handlePredict = async () => {
     setLoading(true)
     setError("")
+    setSimilarProducts([])
     try {
       const result = await predictPriceRange(specs)
       setPrediction(result)
+      // Tìm sản phẩm tương tự dựa trên giá dự đoán (chênh lệch 1-2 triệu)
+      const similar = getSimilarPriceProducts(result.price_vnd, undefined, 6)
+      setSimilarProducts(similar)
     } catch (err) {
-      setError("Lỗi khi dự đoán. Vui lòng thử lại.")
+      setError("Lỗi khi ước tính giá. Vui lòng thử lại.")
       console.error(err)
     } finally {
       setLoading(false)
@@ -60,10 +70,10 @@ export default function PredictPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Dự Đoán Giá Điện Thoại</h1>
-        <p className="text-muted-foreground mb-8">
-          Nhập thông số kỹ thuật và hệ thống sẽ dự đoán phạm vi giá phù hợp cho điện thoại của bạn.
-        </p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Ước Tính Giá Điện Thoại</h1>
+            <p className="text-muted-foreground mb-8">
+              Nhập thông số kỹ thuật và hệ thống sẽ ước tính phạm vi giá phù hợp dựa trên phân tích thị trường.
+            </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Input Form */}
@@ -178,7 +188,7 @@ export default function PredictPage() {
                 className="w-full mt-6 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >
                 <Zap className="w-5 h-5" />
-                {loading ? "Đang Dự Đoán..." : "Dự Đoán Giá"}
+                      {loading ? "Đang phân tích..." : "Ước tính giá"}
               </button>
             </div>
           </div>
@@ -187,11 +197,11 @@ export default function PredictPage() {
           <div className="lg:col-span-1">
             {prediction ? (
               <div className="bg-card border border-border rounded-xl p-6 sticky top-24">
-                <h3 className="font-bold text-lg text-foreground mb-4">Kết Quả Dự Đoán</h3>
+                <h3 className="font-bold text-lg text-foreground mb-4">Kết Quả Ước Tính</h3>
 
-                {/* Giá dự đoán - Chỉ hiển thị giá tiền */}
+                {/* Giá ước tính - Chỉ hiển thị giá tiền */}
                 <div className="mb-6 p-6 bg-primary/10 rounded-xl border-2 border-primary/30">
-                  <div className="text-sm text-muted-foreground mb-2">Giá dự đoán (tại thời điểm ra mắt)</div>
+                  <div className="text-sm text-muted-foreground mb-2">Giá ước tính (tại thời điểm ra mắt)</div>
                   <div className="text-3xl font-bold text-foreground mb-2">
                     {prediction.price_vnd.toLocaleString('vi-VN')} ₫
                   </div>
@@ -203,23 +213,53 @@ export default function PredictPage() {
                 <div className="space-y-2 text-xs text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-primary" />
-                    <span>Dựa trên mô hình Machine Learning đã được huấn luyện</span>
+                    <span>Dựa trên phân tích dữ liệu thị trường và thông số kỹ thuật</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-primary" />
-                    <span>Dữ liệu được thu thập từ thông tin các dòng điện thoại trên toàn thế giới</span>
+                    <span>Dữ liệu được cập nhật từ các sản phẩm trên thị trường hiện tại</span>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="bg-card border border-border rounded-xl p-6">
                 <p className="text-sm text-muted-foreground text-center">
-                  Nhập thông số và nhấn "Dự Đoán Giá" để xem kết quả
+                  Nhập thông số và nhấn "Ước tính giá" để xem kết quả
                 </p>
               </div>
             )}
           </div>
         </div>
+
+        {/* Similar Products Section */}
+        {similarProducts.length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 py-12">
+            <div className="flex items-center gap-3 mb-6">
+              <Sparkles className="w-6 h-6 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">
+                Sản phẩm tương tự trong cửa hàng
+              </h2>
+            </div>
+            <p className="text-muted-foreground mb-6">
+              Các sản phẩm có giá tương đương trong khoảng 1-2 triệu VND (
+              {prediction ? formatCurrency(prediction.price_vnd) : ""})
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {similarProducts.map((product) => {
+                const productPrice = product.variants?.[0]?.price ?? product.price
+                const priceDiff = Math.abs(productPrice - (prediction?.price_vnd ?? 0))
+                return (
+                  <div key={product.id} className="relative">
+                    <ProductCard product={product} />
+                    <div className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full font-semibold">
+                      Chênh: {formatCurrency(priceDiff)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

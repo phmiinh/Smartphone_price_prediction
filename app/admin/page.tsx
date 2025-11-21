@@ -7,6 +7,7 @@ import { ChevronLeft, Plus, Edit2, Trash2, Search } from "lucide-react"
 import { getAllProducts, updateProduct, createProduct } from "@/lib/products-db"
 import type { Product } from "@/lib/types"
 import AdminProductModal from "@/components/admin-product-modal"
+import { formatCurrency } from "@/lib/utils"
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -59,13 +60,6 @@ export default function AdminPage() {
     }
     setShowModal(false)
   }
-
-  const formattedPrice = (price: number) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      maximumFractionDigits: 0,
-    }).format(price)
 
   if (!mounted) {
     return (
@@ -139,6 +133,7 @@ export default function AdminPage() {
                 <tr className="border-b border-border bg-muted/50">
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Sản Phẩm</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Thương Hiệu</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Danh mục</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Giá</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Hàng Có Sẵn</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-foreground">Đánh Giá</th>
@@ -161,11 +156,15 @@ export default function AdminPage() {
                         <div className="min-w-0">
                           <p className="font-medium text-foreground truncate text-sm">{product.name}</p>
                           <p className="text-xs text-muted-foreground">{product.id}</p>
+                          {product.chipset && (
+                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{product.chipset}</p>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-foreground">{product.brand}</td>
-                    <td className="px-6 py-4 font-semibold text-primary text-sm">{formattedPrice(product.price)}</td>
+                    <td className="px-6 py-4 capitalize text-sm text-muted-foreground">{product.category ?? "—"}</td>
+                    <td className="px-6 py-4 font-semibold text-primary text-sm">{formatCurrency(product.price)}</td>
                     <td className="px-6 py-4 text-sm text-foreground">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${
