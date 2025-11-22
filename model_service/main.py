@@ -32,19 +32,34 @@ app.add_middleware(
 # MODEL SETUP
 # ============================================
 MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
-# Try multiple possible model file names (from notebook: random_forest_model.pkl is the best model)
+# Try multiple possible model file names
+# From modeling_knn_dt_rf_nn (3).ipynb: model is saved as 'rf_model_new.pkl'
 MODEL_PATH = None
-for model_name in ["price_predictor.pkl", "random_forest_model.pkl", "decision_tree_model.pkl", "knn_model.pkl"]:
+for model_name in ["rf_model_new.pkl", "price_predictor.pkl", "random_forest_model.pkl", "decision_tree_model.pkl", "knn_model.pkl"]:
     potential_path = os.path.join(MODEL_DIR, model_name)
     if os.path.exists(potential_path):
         MODEL_PATH = potential_path
         break
 if MODEL_PATH is None:
-    MODEL_PATH = os.path.join(MODEL_DIR, "price_predictor.pkl")  # Default fallback
+    MODEL_PATH = os.path.join(MODEL_DIR, "rf_model_new.pkl")  # Default fallback (from new notebook)
 SCALER_PATH = os.path.join(MODEL_DIR, "scaler.pkl")
 VECTORIZER_PATH = os.path.join(MODEL_DIR, "processor_vectorizer.pkl")
 PCA_PATH = os.path.join(MODEL_DIR, "processor_pca.pkl")
 TARGET_ENCODER_PATH = os.path.join(MODEL_DIR, "target_encoder_fitted.pkl")
+
+# Load processor map for Processor_Avg_Price_Scaled
+PROCESSOR_MAP_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model", "processor_map.pkl")
+processor_map = {}
+try:
+    if os.path.exists(PROCESSOR_MAP_PATH):
+        print(f"📥 Loading processor map from: {PROCESSOR_MAP_PATH}")
+        with open(PROCESSOR_MAP_PATH, 'rb') as f:
+            processor_map = pickle.load(f)
+        print(f"✅ Processor map loaded successfully ({len(processor_map)} processors)")
+    else:
+        print(f"⚠️ Processor map not found at {PROCESSOR_MAP_PATH}, will use fallback mapping")
+except Exception as e:
+    print(f"⚠️ Failed to load processor map: {e}, will use fallback mapping")
 
 # Load model và scaler khi start service
 try:
@@ -132,14 +147,14 @@ class PredictResponse(BaseModel):
 # ============================================
 # FEATURE ORDER (Phải khớp với training)
 # ============================================
-# Training feature order used in your notebook regression X:
-# ['RAM','Front Camera','Back Camera','Battery Capacity','Screen Size','ROM',
-#  'Company_Apple','Company_Honor','Company_Oppo','Company_Other','Company_Samsung','Company_Vivo',
-#  'Processor_vec1','Processor_vec2','Processor_vec3']
+# Training feature order from modeling_knn_dt_rf_nn (3).ipynb:
+# ['RAM', 'Front Camera', 'Back Camera', 'Battery Capacity', 'Screen Size', 'ROM',
+#  'Company_Apple', 'Company_Honor', 'Company_Oppo', 'Company_Other', 'Company_Samsung', 'Company_Vivo',
+#  'Processor_Avg_Price_Scaled']
 REG_FEATURE_ORDER = [
     'RAM', 'Front Camera', 'Back Camera', 'Battery Capacity', 'Screen Size', 'ROM',
     'Company_Apple', 'Company_Honor', 'Company_Oppo', 'Company_Other', 'Company_Samsung', 'Company_Vivo',
-    'Processor_vec1', 'Processor_vec2', 'Processor_vec3'
+    'Processor_Avg_Price_Scaled'
 ]
 
 DEFAULT_VND_BANDS = [
@@ -271,107 +286,29 @@ async def predict(request: PredictRequest):
         battery_mah = request.battery_mah if request.battery_mah is not None else 4000
         screen_in = request.screen_size_in if request.screen_size_in is not None else 6.0
 
-        # Process exactly as notebook: Front Camera / 10, Back Camera / 10
-        front_cam_feature = float(front_cam_mp) / 10.0
-        back_cam_feature = float(back_cam_mp) / 10.0
+        # Process exactly as notebook: Front Camera and Back Camera are used directly (not divided by 10)
+        # From mobile-price-prediction-with-ml.ipynb: clean_numeric(data["Front Camera"], remove_str="MP")
+        # CSV shows values like 12.0, 48.0 which are the original MP values
+        front_cam_feature = float(front_cam_mp)
+        back_cam_feature = float(back_cam_mp)
         
         # Process exactly as notebook: Battery Capacity / 1000
         battery_capacity_feature = float(battery_mah) / 1000.0
         
-        # Process exactly as notebook: RAM (divided by 4 as per notebook)
-        # Notebook: data["RAM"] = clean_numeric(data["RAM"], remove_str="GB", round_to_int=True) / 4
-        ram_feature = float(request.ram_gb) / 4.0
+        # Process features according to modeling_knn_dt_rf_nn (3).ipynb
+        # RAM: Use directly (not divided by 4 in new notebook)
+        ram_feature = float(request.ram_gb)
         
-        # Process exactly as notebook: ROM (extracted from model name, divided by 1024 if TB, else divided by 1024 if GB)
-        # Notebook: extract_rom returns GB/1024 for GB values, or TB*1024 for TB values
-        # Then ROM is used directly (not divided by 64)
+        # ROM: Convert to TB format (matching preprocessing in mobile-price-prediction-with-ml.ipynb)
+        # In CSV after preprocessing: GB values are divided by 1024 to convert to TB
+        # So "256GB" -> 0.25 TB, "1TB" -> 1.0 TB
         rom_feature = rom_option_to_reg_feature(request.rom_option)
         
-        # Process exactly as notebook: Screen Size (already in inches)
+        # Screen Size: Use directly in inches
         screen_size_feature = float(screen_in)
 
-        # Encode Company and Processor using Target Encoder (K-Fold Target Encoding)
-        # This is the correct method used in training
+        # Company: Use one-hot encoding (matching new notebook)
         brand_upper = request.brand.strip().title()  # Normalize: "apple" -> "Apple"
-        
-        # Simplify Company Name (matching notebook logic)
-        # Top 5 companies: Apple, Samsung, Oppo, Honor, Vivo -> others become "Other"
-        top_companies = ['Apple', 'Samsung', 'Oppo', 'Honor', 'Vivo']
-        company_name = brand_upper if brand_upper in top_companies else 'Other'
-        
-        # Use Target Encoder if available
-        if target_encoder is not None:
-            try:
-                # Create DataFrame with Company and Processor (matching notebook format)
-                # Note: pd is already imported at the top of the file
-                X_encode = pd.DataFrame({
-                    'Company': [company_name],
-                    'Processor': [request.chip.strip()]
-                })
-                
-                # Transform using fitted encoder
-                # Note: encoder.transform() returns encoded values
-                X_encoded = target_encoder.transform(X_encode)
-                
-                company_encoded = float(X_encoded['Company_encoded'].iloc[0])
-                processor_encoded = float(X_encoded['Processor_encoded'].iloc[0])
-                
-                print(f"✅ Using Target Encoder: Company={company_encoded:.2f}, Processor={processor_encoded:.2f}")
-            except Exception as e:
-                print(f"⚠️ Target encoder failed: {e}, using fallback")
-                # Fallback to simple mapping
-                brand_mapping = {
-                    'Apple': 9.854878,
-                    'Samsung': 7.143009,
-                    'Honor': 6.036950,
-                    'Oppo': 5.098215,
-                    'Vivo': 4.797728,
-                    'Other': 4.652936,
-                }
-                company_encoded = float(brand_mapping.get(company_name, 4.652936))
-                processor_encoded = 5.0  # Default processor encoding
-        else:
-            # Fallback: use approximate values from notebook statistics
-            brand_mapping = {
-                'Apple': 9.854878,
-                'Samsung': 7.143009,
-                'Honor': 6.036950,
-                'Oppo': 5.098215,
-                'Vivo': 4.797728,
-                'Other': 4.652936,
-            }
-            company_encoded = float(brand_mapping.get(company_name, 4.652936))
-            
-            # For processor, use mapping from notebook statistics (top processors)
-            # These are the actual encoded values from the notebook
-            processor_mapping = {
-                'a16 bionic': 9.362926,
-                'snapdragon 8 gen 2': 9.301048,
-                'snapdragon 8 gen 3': 9.298640,
-                'a12z bionic': 9.034853,
-                'qualcomm snapdragon 8 gen 3': 8.486773,
-                'snapdragon 8 gen 1': 8.391612,
-                'a15 bionic': 8.327211,
-                'qualcomm snapdragon 8 gen 2': 8.287884,
-                'a14 bionic': 7.966746,
-                'kirin 9010': 7.810113,
-                'a17 pro': 7.767620,
-                'a12 bionic': 7.701520,
-                'qualcomm snapdragon 8 gen 1': 7.700137,
-                'google tensor g4': 7.628708,
-                'a13 bionic': 7.539615,
-            }
-            chip_lower = request.chip.strip().lower()
-            # Try to find exact match or partial match
-            processor_encoded = 5.858251  # Default: mean from notebook
-            for key, value in processor_mapping.items():
-                if key in chip_lower or chip_lower in key:
-                    processor_encoded = value
-                    break
-            
-            print(f"⚠️ Using fallback encoding: Company={company_encoded:.2f}, Processor={processor_encoded:.2f} (chip: {request.chip})")
-        
-        # Also keep old one-hot for backward compatibility (if model needs it)
         company = {
             'Company_Apple': 1 if brand_upper == 'Apple' else 0,
             'Company_Honor': 1 if brand_upper == 'Honor' else 0,
@@ -380,6 +317,80 @@ async def predict(request: PredictRequest):
             'Company_Samsung': 1 if brand_upper == 'Samsung' else 0,
             'Company_Vivo': 1 if brand_upper == 'Vivo' else 0,
         }
+        
+        # Processor_Avg_Price_Scaled: From create_map.py
+        # Formula: Processor_Avg_Price_Scaled = average_price_of_phones_with_this_processor / 100
+        # Range in CSV: ~1.29 to ~17.99 (not 0-1!)
+        processor_avg_price_scaled = 4.37  # Default fallback (from predict_app.py)
+        
+        # Try to get from processor_map.pkl first (exact match)
+        chip_original = request.chip.strip()
+        if processor_map and chip_original in processor_map:
+            processor_avg_price_scaled = float(processor_map[chip_original])
+            print(f"✅ Found processor '{chip_original}' in map: {processor_avg_price_scaled:.2f}")
+        else:
+            # Fallback: try fuzzy matching with processor_map keys
+            chip_lower = chip_original.lower()
+            matched_key = None
+            for map_key in processor_map.keys():
+                map_key_lower = str(map_key).lower()
+                # Check if chip name contains map key or vice versa
+                if chip_lower in map_key_lower or map_key_lower in chip_lower:
+                    processor_avg_price_scaled = float(processor_map[map_key])
+                    matched_key = map_key
+                    print(f"✅ Matched processor '{chip_original}' to '{map_key}' in map: {processor_avg_price_scaled:.2f}")
+                    break
+            
+            if matched_key is None:
+                # Final fallback: use approximate mapping based on processor tier
+                # These are rough estimates based on typical processor prices / 100
+                fallback_mapping = {
+                    # Apple A-series (premium: $800-1200 -> 8-12)
+                    'a17 pro': 11.0, 'a17': 11.0,
+                    'a16 bionic': 10.5, 'a16': 10.5,
+                    'a15 bionic': 9.5, 'a15': 9.5,
+                    'a14 bionic': 9.0, 'a14': 9.0,
+                    'a13 bionic': 8.0, 'a13': 8.0,
+                    'a12 bionic': 7.5, 'a12': 7.5, 'a12z bionic': 8.5, 'a12z': 8.5,
+                    # Snapdragon 8 series (flagship: $700-1100 -> 7-11)
+                    'snapdragon 8 gen 3': 10.5, 'sd 8 gen 3': 10.5, '8 gen 3': 10.5,
+                    'snapdragon 8 gen 2': 9.5, 'sd 8 gen 2': 9.5, '8 gen 2': 9.5,
+                    'snapdragon 8 gen 1': 8.5, 'sd 8 gen 1': 8.5, '8 gen 1': 8.5,
+                    'qualcomm snapdragon 8 gen 3': 10.5,
+                    'qualcomm snapdragon 8 gen 2': 9.5,
+                    'qualcomm snapdragon 8 gen 1': 8.5,
+                    # Snapdragon 7 series (mid-high: $400-700 -> 4-7)
+                    'snapdragon 7 gen': 5.5, 'sd 7 gen': 5.5, '7 gen': 5.5,
+                    # Other premium
+                    'kirin 9010': 7.5, 'kirin 9000': 7.0,
+                    'google tensor g4': 8.0, 'tensor g4': 8.0,
+                    'google tensor g3': 7.0, 'tensor g3': 7.0,
+                    # Mid-range ($200-400 -> 2-4)
+                    'snapdragon 6': 3.0, 'sd 6': 3.0,
+                    'mediatek dimensity': 3.5, 'dimensity': 3.5,
+                    'helio': 2.5,
+                }
+                
+                for key, value in fallback_mapping.items():
+                    if key in chip_lower or chip_lower in key:
+                        processor_avg_price_scaled = value
+                        print(f"⚠️ Using fallback mapping for '{chip_original}': {processor_avg_price_scaled:.2f}")
+                        break
+                else:
+                    print(f"⚠️ Processor '{chip_original}' not found in map or fallback, using default {processor_avg_price_scaled:.2f}")
+        
+        # Debug: Print all feature values
+        print(f"\n{'='*60}")
+        print("🔍 FEATURE VALUES:")
+        print(f"  RAM: {ram_feature} GB")
+        print(f"  ROM: {rom_feature} TB (from {request.rom_option})")
+        print(f"  Front Camera: {front_cam_feature} (from {front_cam_mp} MP)")
+        print(f"  Back Camera: {back_cam_feature} (from {back_cam_mp} MP)")
+        print(f"  Battery Capacity: {battery_capacity_feature} (from {battery_mah} mAh)")
+        print(f"  Screen Size: {screen_size_feature} inches")
+        print(f"  Company: {brand_upper} -> {[k for k, v in company.items() if v == 1]}")
+        print(f"  Processor: {request.chip} -> Processor_Avg_Price_Scaled={processor_avg_price_scaled:.4f}")
+        print(f"{'='*60}\n")
         
         # Also keep old processor vectors for backward compatibility (if model needs it)
         proc_vec1 = 0.0
@@ -456,23 +467,27 @@ async def predict(request: PredictRequest):
                 feature_dict[col] = back_cam_feature
             elif col == 'Battery Capacity':
                 feature_dict[col] = battery_capacity_feature
-            elif col == 'Company_encoded':
-                # New model uses numeric encoding (0-5)
-                feature_dict[col] = company_encoded
-            elif col == 'Processor_encoded':
-                # New model uses numeric encoding (hash-based)
-                feature_dict[col] = processor_encoded
-            elif col.startswith('Company_') and col != 'Company_encoded':
-                # Old model uses one-hot encoding
+            elif col.startswith('Company_'):
+                # New model uses one-hot encoding for Company
                 feature_dict[col] = company.get(col, 0)
+            elif col == 'Processor_Avg_Price_Scaled':
+                # New model uses Processor_Avg_Price_Scaled
+                feature_dict[col] = processor_avg_price_scaled
+            elif col == 'Company_encoded':
+                # Old model format (backward compatibility)
+                feature_dict[col] = 0.0  # Not used in new model
+            elif col == 'Processor_encoded':
+                # Old model format (backward compatibility)
+                feature_dict[col] = 0.0  # Not used in new model
             elif col.startswith('Processor_vec'):
+                # Old model format (backward compatibility)
                 vec_num = int(col.replace('Processor_vec', ''))
                 if vec_num == 1:
-                    feature_dict[col] = proc_vec1
+                    feature_dict[col] = proc_vec1 if 'proc_vec1' in locals() else 0.0
                 elif vec_num == 2:
-                    feature_dict[col] = proc_vec2
+                    feature_dict[col] = proc_vec2 if 'proc_vec2' in locals() else 0.0
                 elif vec_num == 3:
-                    feature_dict[col] = proc_vec3
+                    feature_dict[col] = proc_vec3 if 'proc_vec3' in locals() else 0.0
                 else:
                     feature_dict[col] = 0.0
             elif col == 'Launched Year':
@@ -504,10 +519,8 @@ async def predict(request: PredictRequest):
         print(f"   Column names match: {X_in.columns.tolist() == required_cols}")
         
         # Predict USD (regression)
-        # IMPORTANT: Model was trained with price divided by 100 (normalized)
-        # From Preprocessor.ipynb: y = data['Launched Price (USA)'] / 100
-        # So model output is in normalized units (0.79 - 18.99 range)
-        # We need to multiply by 100 to get actual USD price
+        # IMPORTANT: Model from modeling_knn_dt_rf_nn (3).ipynb uses 'Launched Price (USA)' directly (not divided by 100)
+        # So model output is already in USD, no need to multiply by 100
         try:
             # Suppress sklearn warnings about feature names if they don't match exactly
             import warnings
@@ -527,20 +540,20 @@ async def predict(request: PredictRequest):
                     # It will apply imputer and scaler internally
                     # Note: Pipeline may not preserve feature names, so we pass DataFrame directly
                     print("🔍 Using Pipeline.predict()")
-                    prediction_result = model.predict(X_in)
-                    print(f"🔍 Prediction result type: {type(prediction_result)}, shape: {prediction_result.shape if hasattr(prediction_result, 'shape') else 'N/A'}")
-                    price_normalized = float(prediction_result[0])
                 else:
-                    # Direct model - use as is
+                    # Direct model - use as is (RandomForestRegressor from new notebook)
                     print("🔍 Using direct model.predict()")
-                    prediction_result = model.predict(X_in)
-                    print(f"🔍 Prediction result type: {type(prediction_result)}, shape: {prediction_result.shape if hasattr(prediction_result, 'shape') else 'N/A'}")
-                    price_normalized = float(prediction_result[0])
                 
-                # Convert back to USD by multiplying by 100
-                price_usd = price_normalized * 100.0
-                print(f"💰 Model output (normalized): {price_normalized:.2f}")
-                print(f"💰 Converted to USD: ${price_usd:.2f}")
+                prediction_result = model.predict(X_in)
+                print(f"🔍 Prediction result type: {type(prediction_result)}, shape: {prediction_result.shape if hasattr(prediction_result, 'shape') else 'N/A'}")
+                
+                # Model output is already in USD (not normalized)
+                price_usd = float(prediction_result[0])
+                print(f"\n{'='*60}")
+                print(f"💰 PREDICTION RESULT:")
+                print(f"  Price (USD): ${price_usd:.2f}")
+                print(f"  Price (VND): {int(price_usd * 25000):,} VND")
+                print(f"{'='*60}\n")
         except Exception as e:
             import traceback
             error_detail = f"Model predict failed: {str(e)}\n{traceback.format_exc()}"

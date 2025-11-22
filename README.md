@@ -1,82 +1,65 @@
-# 📱 Ứng Dụng Dự Đoán Giá Điện Thoại
+# 📱 Siêu Thị Điện Thoại
 
-Ứng dụng web giúp bạn dự đoán giá điện thoại dựa trên thông số kỹ thuật, sử dụng công nghệ Machine Learning.
+Website bán điện thoại với đầy đủ tính năng mua sắm và ước tính giá sản phẩm dựa trên thông số kỹ thuật.
 
-## ✨ Tính Năng Chính
+## 🛠️ Công Nghệ Sử Dụng
 
-### 🛍️ Mua Sắm Điện Thoại
-- **Duyệt sản phẩm**: Xem danh sách điện thoại với đầy đủ thông tin
-- **Tìm kiếm**: Tìm kiếm điện thoại theo tên, thương hiệu
-- **Chi tiết sản phẩm**: Xem thông số kỹ thuật, hình ảnh, giá cả chi tiết
-- **So sánh**: So sánh thông số giữa 2-3 điện thoại để đưa ra quyết định tốt nhất
-- **Giỏ hàng**: Thêm sản phẩm vào giỏ và quản lý đơn hàng
+Website được xây dựng bằng **Next.js** (framework của React) với **TypeScript** để đảm bảo code chạy ổn định và dễ bảo trì. Giao diện được thiết kế bằng **Tailwind CSS** để responsive trên mọi thiết bị, từ điện thoại đến máy tính.
 
-### 🤖 Dự Đoán Giá Bằng AI
-Nhập thông số kỹ thuật của điện thoại để nhận dự đoán giá dựa trên mô hình Machine Learning đã được huấn luyện.
+Các component UI được xây dựng dựa trên **Radix UI** - một thư viện component chất lượng cao, giúp website có giao diện đẹp và trải nghiệm người dùng tốt. Quản lý state (giỏ hàng, đơn hàng) sử dụng **Zustand** - một thư viện nhẹ và dễ sử dụng.
 
-**Thông tin cần nhập:**
-- **ROM** (bộ nhớ trong): Chọn từ 32GB, 64GB, 128GB, 256GB, 512GB, 1TB, 2TB
-- **RAM**: Chọn từ 4GB, 6GB, 8GB, 12GB, 16GB
-- **Chip/Vi xử lý**: Nhập tên chip (ví dụ: "Snapdragon 8 Gen 2", "A17 Bionic", "Dimensity 9200")
-- **Thương hiệu**: Chọn Apple, Samsung, Xiaomi, OPPO, Vivo, Realme, hoặc Khác
-- **Camera trước** (tùy chọn): Số MP, mặc định 12MP
-- **Camera sau** (tùy chọn): Số MP, mặc định 12MP
-- **Pin** (tùy chọn): Dung lượng mAh, mặc định 4000mAh
-- **Kích thước màn hình** (tùy chọn): Số inch, mặc định 6.0 inch
+Form được xử lý bằng **React Hook Form** kết hợp với **Zod** để validate dữ liệu đầu vào một cách chính xác. Icon sử dụng **Lucide React** - bộ icon đẹp và đầy đủ.
 
-**Kết quả nhận được:**
-- Giá dự đoán bằng VND (Việt Nam Đồng)
-- Giá dự đoán bằng USD (Đô la Mỹ)
-- Lưu ý: Giá dự đoán là giá tại thời điểm ra mắt, không phải giá hiện tại
+## ✨ Tính Năng Hiện Có
 
-## 🎯 Cách Sử Dụng
+### 🏠 Trang Chủ
+- Hiển thị sản phẩm nổi bật, sản phẩm mới, sản phẩm được đánh giá cao
+- Tìm kiếm sản phẩm theo tên hoặc thương hiệu
+- Lọc sản phẩm theo thương hiệu
+- Hiển thị các phân khúc: giá rẻ, tầm trung, cao cấp, flagship
 
-### Dự Đoán Giá Điện Thoại
+### 🛍️ Mua Sắm
+- **Danh sách sản phẩm**: Xem tất cả điện thoại với đầy đủ thông tin, giá cả, hình ảnh
+- **Chi tiết sản phẩm**: 
+  - Xem thông số kỹ thuật đầy đủ (RAM, ROM, camera, pin, màn hình...)
+  - Chọn phiên bản và màu sắc
+  - Thêm vào giỏ hàng
+  - Xem sản phẩm tương tự có giá gần bằng
+- **So sánh sản phẩm**: So sánh thông số giữa 2-3 điện thoại để đưa ra quyết định tốt nhất
+- **Giỏ hàng**: Quản lý sản phẩm đã chọn, cập nhật số lượng, xóa sản phẩm
+- **Thanh toán**: Điền thông tin giao hàng và hoàn tất đơn hàng
 
-1. Truy cập trang **"Dự Đoán Giá"** từ menu chính
-2. Nhập thông tin điện thoại:
-   - Chọn ROM, RAM, Thương hiệu từ danh sách
-   - Nhập tên Chip/Vi xử lý
-   - (Tùy chọn) Điều chỉnh Camera, Pin, Kích thước màn hình nếu khác mặc định
-3. Nhấn nút **"Dự Đoán Giá"**
-4. Xem kết quả dự đoán hiển thị ngay bên cạnh
+### 💰 Ước Tính Giá
+- Nhập thông số kỹ thuật (ROM, RAM, chip, thương hiệu, camera, pin, màn hình)
+- Nhận kết quả ước tính giá ngay lập tức
+- Hiển thị giá bằng VND và USD
+- Xem các sản phẩm tương tự có trong cửa hàng với giá gần bằng
 
-**Mẹo**: Bạn có thể sử dụng nút "Tải Ví Dụ" để xem các cấu hình mẫu của iPhone, Samsung, Xiaomi, OPPO.
+### 👤 Tài Khoản
+- **Đăng ký / Đăng nhập**: Tạo tài khoản để quản lý đơn hàng
+- **Hồ sơ**: Xem và cập nhật thông tin cá nhân
+- **Đơn hàng**: Xem lịch sử đơn hàng và chi tiết từng đơn
+- **Yêu thích**: Lưu sản phẩm yêu thích để xem lại sau
 
-### Mua Sắm
+### 🔧 Quản Trị (Admin)
+- Quản lý sản phẩm: Thêm, sửa, xóa sản phẩm
+- Quản lý đơn hàng: Xem và cập nhật trạng thái đơn hàng
+- Quản lý người dùng: Xem danh sách người dùng
 
-1. **Duyệt sản phẩm**: Xem danh sách điện thoại trên trang chủ
-2. **Tìm kiếm**: Sử dụng thanh tìm kiếm để tìm điện thoại theo tên hoặc thương hiệu
-3. **Xem chi tiết**: Click vào sản phẩm để xem thông tin đầy đủ
-4. **So sánh**: Chọn 2-3 sản phẩm để so sánh thông số kỹ thuật
-5. **Thêm vào giỏ**: Thêm sản phẩm vào giỏ hàng và tiến hành thanh toán
+## 🎨 Giao Diện
 
-## 📊 Về Dữ Liệu Dự Đoán
+Website có giao diện hiện đại, dễ sử dụng với:
+- **Dark mode / Light mode**: Chuyển đổi giữa chế độ sáng và tối
+- **Responsive**: Tự động điều chỉnh giao diện trên điện thoại, tablet, máy tính
+- **Animation mượt mà**: Các hiệu ứng chuyển trang và tương tác mượt mà
+- **UI components đẹp**: Button, card, form, dialog... được thiết kế nhất quán và đẹp mắt
 
-- **Nguồn dữ liệu**: Mô hình được huấn luyện trên dữ liệu thu thập từ thông tin các dòng điện thoại trên toàn thế giới
-- **Độ chính xác**: Mô hình sử dụng thuật toán Random Forest với độ chính xác cao
-- **Giá dự đoán**: Là giá tại thời điểm ra mắt của sản phẩm, không phải giá hiện tại trên thị trường
+## 📊 Dữ Liệu
 
-## 💡 Lưu Ý
+Website hiện có khoảng 40+ sản phẩm điện thoại đa dạng từ các thương hiệu phổ biến như Apple, Samsung, Xiaomi, OPPO, Vivo, Realme... Các sản phẩm được phân loại theo phân khúc giá: giá rẻ, tầm trung, cao cấp, và flagship.
 
-- Giá dự đoán chỉ mang tính chất tham khảo, có thể khác với giá thực tế trên thị trường
-- Giá dự đoán dựa trên thông số kỹ thuật, không tính đến các yếu tố khác như thương hiệu, thiết kế, tính năng đặc biệt
-- Tỷ giá USD/VND được cập nhật theo thời điểm (mặc định: 1 USD = 25,000 VND)
-
-## 🆘 Hỗ Trợ
-
-Nếu bạn gặp vấn đề khi sử dụng ứng dụng, vui lòng:
-- Kiểm tra kết nối internet
-- Làm mới trang web (F5)
-- Đảm bảo đã nhập đầy đủ thông tin bắt buộc (ROM, RAM, Chip, Thương hiệu)
-
-## 📱 Trải Nghiệm Tốt Nhất
-
-- Sử dụng trình duyệt hiện đại (Chrome, Firefox, Edge, Safari phiên bản mới nhất)
-- Kết nối internet ổn định
-- Màn hình độ phân giải tối thiểu 320px (hỗ trợ mobile)
+Tính năng ước tính giá sử dụng mô hình Machine Learning được huấn luyện trên dữ liệu thực tế từ thị trường, giúp đưa ra giá ước tính khá chính xác dựa trên thông số kỹ thuật.
 
 ---
 
-**Chúc bạn có trải nghiệm tốt với ứng dụng!** 🎉
-
+**Website được phát triển với mục tiêu mang lại trải nghiệm mua sắm điện thoại tốt nhất cho người dùng.**
